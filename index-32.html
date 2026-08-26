@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Controle de Fichas de Produção — Granja São José</title>
+<style>
+:root{--azul:#0b2340;--azul2:#12385f;--bg:#f4f6f9;--card:#fff;--txt:#17202a;--muted:#667085;--line:#d9e0e8;--ok:#1f7a4d;--warn:#9a6700}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--txt)}
+header{background:linear-gradient(135deg,var(--azul),var(--azul2));color:#fff;padding:20px 16px;box-shadow:0 2px 10px #0002}
+header .wrap,.wrap{max-width:1180px;margin:auto} h1{font-size:23px;margin:0 0 4px}.sub{opacity:.9;font-size:13px}
+nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:4}
+nav .wrap{display:flex;gap:8px;padding:9px 12px;overflow:auto}
+button,.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
+.primary{background:var(--azul);color:#fff}.secondary{background:#edf2f7;color:var(--azul);border:1px solid #d4deea}.danger{background:#fff1f1;color:#9f2020;border:1px solid #efcaca}
+main{padding:16px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px;box-shadow:0 2px 8px #00000008}
+.c12{grid-column:span 12}.c6{grid-column:span 6}.c4{grid-column:span 4}.c3{grid-column:span 3}
+h2{font-size:17px;margin:0 0 12px;color:var(--azul)}label{display:block;font-size:12px;font-weight:700;color:#485568;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid #cdd7e2;border-radius:8px;background:#fff;font-size:14px}
+textarea{min-height:70px;resize:vertical}.form{display:grid;grid-template-columns:repeat(12,1fr);gap:11px}.f2{grid-column:span 2}.f3{grid-column:span 3}.f4{grid-column:span 4}.f6{grid-column:span 6}.f12{grid-column:span 12}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.info{background:#eef5ff;border:1px solid #cddff4;border-radius:10px;padding:11px;font-size:13px;line-height:1.45}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}.kpi{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fafbfd}.kpi small{color:var(--muted);display:block}.kpi b{font-size:18px;color:var(--azul)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px}table{width:100%;border-collapse:collapse;min-width:960px}th,td{padding:9px;border-bottom:1px solid #e6ebf0;text-align:center;font-size:12px}th{background:#edf3f9;color:#234366;position:sticky;top:0}.empty{text-align:center;color:var(--muted);padding:20px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#e9f6ef;color:var(--ok);font-size:11px;font-weight:700}.security{background:#f7f9fc;border:1px solid #cfd9e5;border-radius:10px;padding:11px;font-size:12px;line-height:1.45}.audit{max-height:320px;overflow:auto}.audit-item{padding:8px 0;border-bottom:1px solid #e5eaf0;font-size:12px}.audit-item:last-child{border-bottom:0}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:25px}
+.hidden{display:none!important}
+@media(max-width:800px){.c6,.c4,.c3{grid-column:span 12}.f2,.f3,.f4,.f6{grid-column:span 12}.kpis{grid-template-columns:repeat(2,1fr)}header{padding-top:18px}}
+@media print{header,nav,.no-print,.actions{display:none!important}body{background:#fff}main{padding:0}.card{box-shadow:none;border:0;padding:0}.table-wrap{border:0;overflow:visible}table{min-width:0}th,td{font-size:9px;padding:5px}.screen-only{display:none!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>Granja São José</h1><div class="sub">Controle de Fichas de Produção</div></div></header>
+<nav><div class="wrap">
+<button class="primary" onclick="mostrar('lancamento')">Lançamento diário</button>
+<button class="secondary" onclick="mostrar('lotes')">Lotes</button>
+<button class="secondary" onclick="mostrar('historico')">Histórico / Impressão</button>
+<button class="secondary" onclick="mostrar('importar')">Importar da V11</button>
+</div></nav>
+
+<main class="wrap">
+<section id="lancamento" class="sec">
+<div class="grid">
+<div class="card c12">
+<h2>Controle diário de produção</h2>
+<div class="form">
+<div class="f4"><label>Lote</label><select id="selLote" onchange="carregarLote();renderHist()"></select></div>
+<div class="f4"><label>Data</label><input id="data" type="date" onchange="atualizarSemana();preview()"></div>
+<div class="f4"><label>Idade (semanas)</label><input id="sem" type="number" readonly></div>
+<div class="f3"><label>Mortalidade do dia</label><input id="mort" type="number" min="0" value="0" oninput="preview()"></div>
+<div class="f3"><label>Ovos brancos</label><input id="branco" type="number" min="0" value="0" oninput="preview()"></div>
+<div class="f3"><label>Ovos vermelhos</label><input id="vermelho" type="number" min="0" value="0" oninput="preview()"></div>
+<div class="f3"><label>Ovos PCG</label><input id="pcg" type="number" min="0" value="0" oninput="preview()"></div>
+<div class="f3"><label>Ração consumida (kg)</label><input id="racao" type="number" min="0" step="0.01" value="0" oninput="preview()"></div>
+<div class="f4"><label>Responsável pelo lançamento</label><input id="responsavel" placeholder="Nome do responsável"></div>
+<div class="f8"><label>Observações</label><textarea id="obs" placeholder="Vacinação, manejo, ocorrência, alteração de consumo..."></textarea></div>
+</div>
+<div id="prev" class="info" style="margin-top:12px">Selecione um lote.</div>
+<div class="actions"><button class="primary" onclick="salvarRegistro()">Salvar registro diário</button><button class="secondary" onclick="proximoDia()">Ir para o próximo dia</button></div>
+<div class="info" style="margin-top:12px"><b>Automático:</b> ao salvar, a data avança para o dia seguinte e a idade em semanas é recalculada pela data de nascimento do lote. Os campos do novo dia são limpos.</div>
+<div class="security" style="margin-top:12px">
+<b>Proteção dos registros:</b> cada salvamento gera identificação única, horário do lançamento, histórico de alterações e uma cópia de segurança interna automática.
+<div id="segStatus" style="margin-top:5px;color:#667085"></div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="lotes" class="sec hidden">
+<div class="grid"><div class="card c12">
+<h2>Cadastro de lotes</h2>
+<div class="form">
+<input id="loteId" type="hidden">
+<div class="f4"><label>Nome do lote</label><input id="nome"></div>
+<div class="f4"><label>Galpão</label><input id="galpao"></div>
+<div class="f4"><label>Data de nascimento</label><input id="nascimento" type="date"></div>
+<div class="f4"><label>Nº aves iniciadas</label><input id="iniciadas" type="number"></div>
+<div class="f4"><label>Nº aves alojadas</label><input id="aves" type="number"></div>
+<div class="f4"><label>Idade aos 5% postura</label><input id="cinco" type="number"></div>
+<div class="f4"><label>Linhagem</label><input id="linhagem"></div>
+<div class="f4"><label>Procedência</label><input id="procedencia"></div>
+<div class="f4"><label>Propriedade</label><input id="propriedade" value="BR 262 KM 426 - Conquista"></div>
+<div class="f6"><label>Proprietária</label><input id="proprietaria" value="Sirlene Arantes Rodrigues Pereira"></div>
+<div class="f6"><label>Local</label><input id="local" value="São Gonçalo do Pará - MG"></div>
+</div>
+<div class="actions"><button class="primary" onclick="salvarLote()">Salvar lote</button><button class="secondary" onclick="novoLote()">Novo</button></div>
+<div id="listaLotes"></div>
+</div></div>
+</section>
+
+<section id="historico" class="sec hidden">
+<div class="grid"><div class="card c12">
+<h2>Histórico mensal / ficha para impressão</h2>
+<div class="form no-print">
+<div class="f6"><label>Lote</label><select id="histLote" onchange="sincronizarSelecao();renderHist()"></select></div>
+<div class="f3"><label>Mês</label><input id="mes" type="month" onchange="renderHist()"></div>
+<div class="f3"><label>&nbsp;</label><button class="primary" style="width:100%" onclick="imprimirFicha()">Imprimir / PDF</button></div>
+</div>
+<div id="cabFicha"></div>
+<div id="resumo"></div>
+<div id="hist"></div>
+</div></div>
+</section>
+
+<section id="importar" class="sec hidden">
+<div class="grid">
+<div class="card c6">
+<h2>Importar dados existentes</h2>
+<div class="info">Selecione o arquivo de backup para copiar somente <b>cadastro dos lotes</b> e <b>registros diários de produção</b>. Vendas, clientes, fábrica, funcionários e financeiro não são importados.</div>
+<div class="actions">
+<label class="btn primary" style="display:inline-block">Selecionar arquivo de backup<input id="arq" type="file" accept=".json,application/json" style="display:none" onchange="importarBackup(event)"></label>
+<button class="secondary" type="button" onclick="importarDiretoV11()">Ler dados direto da V11 deste aparelho</button>
+</div>
+<div id="impStatus" class="info" style="margin-top:12px">Nenhuma importação realizada nesta instalação.</div>
+</div>
+<div class="card c6">
+<h2>Segurança dos dados</h2>
+<div class="info">A importação apenas copia os dados de produção para este controle, sem alterar o arquivo de origem.</div>
+<div class="actions"><button class="secondary" onclick="exportarDados()">Exportar backup destas fichas</button><label class="btn secondary" style="display:inline-block">Restaurar fichas<input type="file" accept=".json" style="display:none" onchange="restaurarDados(event)"></label></div>
+</div>
+<div class="card c12">
+<h2>Histórico de alterações</h2>
+<div class="info">Correções ficam registradas com data e hora. O sistema não apaga silenciosamente o histórico de um registro substituído.</div>
+<div id="auditLista" class="audit" style="margin-top:10px"></div>
+</div>
+</div>
+</section>
+</main>
+<footer>Controle de Fichas de Produção — Granja São José • versão com rastreabilidade</footer>
+
+<script>
+const KLOT='gsj_fichas_lotes_v1', KREG='gsj_fichas_registros_v1', KAUD='gsj_fichas_auditoria_v1', KSNAP='gsj_fichas_snapshot_v1';
+const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch(e){return d}};
+const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let lotes=get(KLOT,[]), regs=get(KREG,[]), auditoria=get(KAUD,[]);
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const hoje=()=>new Date().toISOString().slice(0,10), mesAtual=()=>hoje().slice(0,7);
+const br=d=>{if(!d)return ''; const [a,m,x]=d.split('-');return `${x}/${m}/${a}`};
+const agoraISO=()=>new Date().toISOString();
+function uid(prefix='F'){return prefix+'-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase()}
+function registrarAuditoria(acao,detalhe,ref=''){
+ auditoria.unshift({id:uid('AUD'),dataHora:agoraISO(),acao,detalhe,ref});
+ auditoria=auditoria.slice(0,1000); set(KAUD,auditoria); renderAuditoria();
+}
+function snapshotInterno(){
+ const snap={gerado:agoraISO(),lotes,registros:regs,auditoria};
+ localStorage.setItem(KSNAP,JSON.stringify(snap));
+ localStorage.setItem('gsj_fichas_ultimo_snapshot',snap.gerado);
+ atualizarSegStatus();
+}
+function atualizarSegStatus(){
+ const el=$('segStatus'); if(!el)return;
+ const u=localStorage.getItem('gsj_fichas_ultimo_snapshot');
+ el.textContent=u?'Última cópia interna: '+new Date(u).toLocaleString('pt-BR'):'Ainda não há cópia interna.';
+}
+function renderAuditoria(){
+ const el=$('auditLista'); if(!el)return;
+ if(!auditoria.length){el.innerHTML='<div class="empty">Nenhuma alteração registrada.</div>';return}
+ el.innerHTML=auditoria.slice(0,100).map(a=>`<div class="audit-item"><b>${new Date(a.dataHora).toLocaleString('pt-BR')}</b> — ${esc(a.acao)}${a.ref?` <span class="badge">${esc(a.ref)}</span>`:''}<br>${esc(a.detalhe||'')}</div>`).join('');
+}
+function validarDataRegistro(data,c){
+ if(!data)return 'Informe a data.';
+ const hojeStr=hoje();
+ if(data>hojeStr)return 'Não é permitido lançar uma data futura.';
+ if(c?.nascimento && data<c.nascimento)return 'A data do registro não pode ser anterior ao nascimento do lote.';
+ return '';
+}
+
+function mostrar(id){document.querySelectorAll('.sec').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden'); if(id==='historico')renderHist(); if(id==='lotes')renderLotes()}
+function renderSelects(){
+ const opts='<option value="">Selecione...</option>'+lotes.filter(x=>(x.status||'ativo')!=='encerrado').map(x=>`<option value="${x.id}">${esc(x.nome)}${x.galpao?' • '+esc(x.galpao):''}</option>`).join('');
+ const atual=$('selLote')?.value, h=$('histLote')?.value;
+ $('selLote').innerHTML=opts;$('histLote').innerHTML=opts;
+ if(atual&&lotes.some(x=>String(x.id)===String(atual)))$('selLote').value=atual;
+ if(h&&lotes.some(x=>String(x.id)===String(h)))$('histLote').value=h;
+}
+function loteAtual(id='selLote'){return lotes.find(x=>String(x.id)===String($(id).value))||null}
+function novoLote(){['loteId','nome','galpao','nascimento','iniciadas','aves','cinco','linhagem','procedencia'].forEach(i=>$(i).value='');$('propriedade').value='BR 262 KM 426 - Conquista';$('proprietaria').value='Sirlene Arantes Rodrigues Pereira';$('local').value='São Gonçalo do Pará - MG'}
+function salvarLote(){
+ const nome=$('nome').value.trim(), aves=Number($('aves').value||0); if(!nome||aves<=0)return alert('Informe o nome do lote e o número de aves alojadas.');
+ const id=$('loteId').value||Date.now();
+ const x={id:Number(id),nome,galpao:$('galpao').value.trim(),nascimento:$('nascimento').value,iniciadas:Number($('iniciadas').value||0),aves,cinco:Number($('cinco').value||0),linhagem:$('linhagem').value.trim(),procedencia:$('procedencia').value.trim(),propriedade:$('propriedade').value.trim(),proprietaria:$('proprietaria').value.trim(),local:$('local').value.trim(),status:'ativo'};
+ const i=lotes.findIndex(a=>String(a.id)===String(id)); if(i>=0)lotes[i]={...lotes[i],...x}; else lotes.push(x); set(KLOT,lotes);registrarAuditoria(i>=0?'Lote atualizado':'Lote cadastrado',`${nome} • ${aves} aves`,String(id));snapshotInterno();renderSelects();renderLotes();alert(i>=0?'Lote atualizado.':'Lote cadastrado.');novoLote();
+}
+function editarLote(id){const x=lotes.find(a=>String(a.id)===String(id));if(!x)return;Object.keys(x).forEach(k=>{if($(k))$(k).value=x[k]??''});$('loteId').value=x.id;window.scrollTo({top:0,behavior:'smooth'})}
+function renderLotes(){
+ const el=$('listaLotes'); if(!lotes.length){el.innerHTML='<div class="empty">Nenhum lote cadastrado.</div>';return}
+ el.innerHTML=`<div class="table-wrap"><table><tr><th>Lote</th><th>Galpão</th><th>Nascimento</th><th>Aves alojadas</th><th>Linhagem</th><th>Procedência</th><th>Registros</th><th>Ação</th></tr>${lotes.map(x=>`<tr><td>${esc(x.nome)}</td><td>${esc(x.galpao||'—')}</td><td>${br(x.nascimento)||'—'}</td><td>${Number(x.aves||0).toLocaleString('pt-BR')}</td><td>${esc(x.linhagem||'—')}</td><td>${esc(x.procedencia||'—')}</td><td>${regs.filter(r=>String(r.loteId)===String(x.id)).length}</td><td><button class="secondary" onclick="editarLote(${x.id})">Editar</button></td></tr>`).join('')}</table></div>`;
+}
+function carregarLote(){atualizarSemana();preview(); $('histLote').value=$('selLote').value}
+function diasEntre(a,b){const d1=new Date(a+'T12:00:00'),d2=new Date(b+'T12:00:00');return Math.floor((d2-d1)/86400000)}
+function semanaNaData(c,d){
+ if(!c||!c.nascimento||!d)return '';
+ const dias=diasEntre(c.nascimento,d); if(dias<0)return 0; return Math.floor(dias/7);
+}
+function atualizarSemana(){const c=loteAtual();$('sem').value=semanaNaData(c,$('data').value)}
+function calc(){
+ const c=loteAtual(),data=$('data').value, mort=Math.max(0,Number($('mort').value||0));
+ if(!c)return null;
+ const ant=regs.filter(r=>String(r.loteId)===String(c.id)&&(r.data||'')<data).reduce((s,r)=>s+Number(r.mort||0),0);
+ const vivas=Math.max(0,Number(c.aves||0)-ant-mort), branco=Math.max(0,Number($('branco').value||0)), vermelho=Math.max(0,Number($('vermelho').value||0)), pcg=Math.max(0,Number($('pcg').value||0)), ovos=branco+vermelho+pcg, racao=Math.max(0,Number($('racao').value||0));
+ return {vivas,branco,vermelho,pcg,ovos,mort,racao,postura:vivas?ovos/vivas*100:0,gAve:vivas?racao*1000/vivas:0}
+}
+function preview(){const c=loteAtual(),x=calc();if(!c||!x){$('prev').innerHTML='Selecione um lote.';return}$('prev').innerHTML=`<b>${esc(c.nome)}</b> • ${$('sem').value||'—'} semanas<br>Aves vivas: <b>${x.vivas.toLocaleString('pt-BR')}</b> &nbsp;•&nbsp; Ovos: <b>${x.ovos.toLocaleString('pt-BR')}</b> &nbsp;•&nbsp; Postura: <b>${x.postura.toFixed(2)}%</b> &nbsp;•&nbsp; Consumo: <b>${x.gAve.toFixed(1)} g/ave/dia</b>`}
+function limparDia(){['mort','branco','vermelho','pcg','racao'].forEach(i=>$(i).value='0');$('obs').value=''}
+function proximoDia(){if(!$('data').value)$('data').value=hoje();else{const d=new Date($('data').value+'T12:00:00');d.setDate(d.getDate()+1);$('data').value=d.toISOString().slice(0,10)} atualizarSemana();limparDia();preview()}
+function salvarRegistro(){
+ const c=loteAtual(), x=calc(), data=$('data').value;if(!c)return alert('Selecione um lote.');
+ const erro=validarDataRegistro(data,c); if(erro)return alert(erro);
+ const responsavel=$('responsavel').value.trim();
+ if(!responsavel)return alert('Informe o responsável pelo lançamento.');
+ const agora=agoraISO();
+ const reg={id:Date.now(),fichaId:uid('FICHA'),loteId:c.id,nome:c.nome,data,sem:Number($('sem').value||0),mort:x.mort,aves:x.vivas,ovosBranco:x.branco,ovosVermelho:x.vermelho,ovosPCG:x.pcg,ovos:x.ovos,racao:x.racao,postura:x.postura,gAve:x.gAve,obs:$('obs').value.trim(),responsavel,criadoEm:agora,alteradoEm:null};
+ const i=regs.findIndex(r=>String(r.loteId)===String(c.id)&&r.data===data);
+ if(i>=0){
+   const anterior={...regs[i]};
+   if(!confirm('Já existe registro para este lote nesta data. A correção ficará registrada no histórico. Deseja substituir?'))return;
+   reg.id=regs[i].id; reg.fichaId=regs[i].fichaId||uid('FICHA'); reg.criadoEm=regs[i].criadoEm||agora; reg.alteradoEm=agora;
+   regs[i]=reg;
+   registrarAuditoria('Registro corrigido',`${c.nome} • ${br(data)} • responsável: ${responsavel}`,reg.fichaId);
+ }else{
+   regs.push(reg);
+   registrarAuditoria('Registro criado',`${c.nome} • ${br(data)} • responsável: ${responsavel}`,reg.fichaId);
+ }
+ set(KREG,regs); snapshotInterno(); $('histLote').value=String(c.id); $('mes').value=data.slice(0,7); renderHist();proximoDia();
+}
+function sincronizarSelecao(){$('selLote').value=$('histLote').value;carregarLote()}
+function renderHist(){
+ const c=loteAtual('histLote')||loteAtual(); if(!c){$('cabFicha').innerHTML='';$('resumo').innerHTML='';$('hist').innerHTML='<div class="empty">Selecione um lote.</div>';return}
+ if(!$('histLote').value)$('histLote').value=String(c.id);
+ const m=$('mes').value||mesAtual(), arr=regs.filter(r=>String(r.loteId)===String(c.id)&&(!m||(r.data||'').slice(0,7)===m)).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+ $('cabFicha').innerHTML=`<div class="info screen-only" style="margin-top:12px"><b>Ficha:</b> ${esc(c.nome)} • ${m}</div>
+ <div style="margin-top:14px;text-align:center"><h2 style="font-size:20px;margin-bottom:3px">REGISTRO DE PRODUÇÃO DE OVOS</h2><div style="font-size:12px">Controle de Fichas de Produção — Granja São José</div><div style="font-size:10px;margin-top:3px">Emitido em: ${new Date().toLocaleString('pt-BR')}</div></div>
+ <div class="table-wrap" style="margin-top:10px"><table style="min-width:0"><tr><th>Propriedade</th><td>${esc(c.propriedade||'')}</td><th>Proprietária</th><td>${esc(c.proprietaria||'')}</td></tr><tr><th>Local</th><td>${esc(c.local||'')}</td><th>Galpão / Lote</th><td>${esc(c.galpao||'')} / ${esc(c.nome)}</td></tr><tr><th>Nascimento</th><td>${br(c.nascimento)}</td><th>Linhagem</th><td>${esc(c.linhagem||'')}</td></tr><tr><th>Aves iniciadas</th><td>${c.iniciadas||''}</td><th>Aves alojadas</th><td>${c.aves||''}</td></tr></table></div>`;
+ const ovos=arr.reduce((s,r)=>s+Number(r.ovos||0),0),mort=arr.reduce((s,r)=>s+Number(r.mort||0),0),rac=arr.reduce((s,r)=>s+Number(r.racao||0),0),med=arr.length?arr.reduce((s,r)=>s+Number(r.postura||0),0)/arr.length:0;
+ $('resumo').innerHTML=`<div class="kpis screen-only"><div class="kpi"><small>Registros</small><b>${arr.length}</b></div><div class="kpi"><small>Ovos</small><b>${ovos.toLocaleString('pt-BR')}</b></div><div class="kpi"><small>Mortalidade</small><b>${mort}</b></div><div class="kpi"><small>Ração kg</small><b>${rac.toLocaleString('pt-BR',{maximumFractionDigits:1})}</b></div><div class="kpi"><small>Postura média</small><b>${med.toFixed(2)}%</b></div></div>`;
+ $('hist').innerHTML=arr.length?`<div class="table-wrap"><table><tr><th>Data</th><th>Ficha</th><th>Idade</th><th>Mortalidade</th><th>Aves vivas</th><th>Ovos total</th><th>Brancos</th><th>Vermelhos</th><th>PCG</th><th>% Postura</th><th>Ração kg</th><th>Responsável</th><th>Obs.</th><th class="no-print">Ação</th></tr>${arr.map(r=>`<tr><td>${br(r.data)}</td><td>${esc(r.fichaId||'—')}</td><td>${r.sem}</td><td>${r.mort||0}</td><td>${Number(r.aves||0).toLocaleString('pt-BR')}</td><td>${Number(r.ovos||0).toLocaleString('pt-BR')}</td><td>${Number(r.ovosBranco??r.ovos??0).toLocaleString('pt-BR')}</td><td>${Number(r.ovosVermelho||0).toLocaleString('pt-BR')}</td><td>${Number(r.ovosPCG||0).toLocaleString('pt-BR')}</td><td>${Number(r.postura||0).toFixed(2)}%</td><td>${Number(r.racao||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td><td>${esc(r.responsavel||'—')}</td><td>${esc(r.obs||'')}</td><td class="no-print"><button class="secondary" onclick="editarReg(${r.id})">Editar</button></td></tr>`).join('')}</table></div><div style="margin-top:28px">Assinatura: _______________________________________________</div>`:'<div class="empty">Nenhum registro neste mês.</div>';
+}
+function editarReg(id){const r=regs.find(x=>Number(x.id)===Number(id));if(!r)return;$('selLote').value=String(r.loteId);$('data').value=r.data;$('sem').value=r.sem;$('mort').value=r.mort||0;$('branco').value=r.ovosBranco??r.ovos??0;$('vermelho').value=r.ovosVermelho||0;$('pcg').value=r.ovosPCG||0;$('racao').value=r.racao||0;$('responsavel').value=r.responsavel||'';$('obs').value=r.obs||'';mostrar('lancamento');preview()}
+function imprimirFicha(){renderHist();window.print()}
+
+function parseMaybe(v,def=[]){if(v==null)return def; if(Array.isArray(v))return v; try{return JSON.parse(v)}catch(e){return def}}
+function normalizarLoteImportado(x,i=0){
+ if(!x||typeof x!=='object')return null;
+ const id=Number(x.id??x.loteId??x.codigo??Date.now()+i);
+ const nome=String(x.nome??x.lote??x.nomeLote??x.descricao??('Lote '+(i+1))).trim();
+ const aves=Number(x.aves??x.avesAlojadas??x.alojadas??x.quantidadeAves??x.iniciadas??0);
+ return {...x,id,nome,aves:Number.isFinite(aves)?aves:0,nascimento:x.nascimento??x.dataNascimento??x.nasc??'',status:x.status||'ativo'};
+}
+function normalizarRegistroImportado(x,i=0){
+ if(!x||typeof x!=='object')return null;
+ const loteId=x.loteId??x.idLote??x.lote_id??x.lote;
+ const data=x.data??x.dataRegistro??x.dia??'';
+ if(loteId==null||!data)return null;
+ const branco=Number(x.ovosBranco??x.branco??x.ovos_brancos??0);
+ const vermelho=Number(x.ovosVermelho??x.vermelho??x.ovos_vermelhos??0);
+ const pcg=Number(x.ovosPCG??x.pcg??x.ovosPcg??0);
+ const ovosInformados=Number(x.ovos??x.totalOvos??x.ovosTotal??0);
+ const ovos=(branco+vermelho+pcg)>0?(branco+vermelho+pcg):ovosInformados;
+ return {...x,id:Number(x.id??Date.now()+i),loteId,data,ovosBranco:branco,ovosVermelho:vermelho,ovosPCG:pcg,ovos,
+   mort:Number(x.mort??x.mortalidade??0),racao:Number(x.racao??x.racaoKg??x.consumoRacao??0),
+   fichaId:x.fichaId||uid('FICHA'),criadoEm:x.criadoEm||agoraISO(),responsavel:x.responsavel||'Importado'};
+}
+function lerDadosV11DoObjeto(d){
+ const fontes=[d||{},d?.v11Extras||{},d?.dados||{},d?.data||{}];
+ let cl=[],cr=[];
+ for(const z of fontes){
+   if(!z||typeof z!=='object')continue;
+   if(!cl.length)cl=parseMaybe(z['gsj_v11_lotes_cadastro']??z.lotes??z.cadastroLotes??z.lotesCadastro,[]);
+   if(!cr.length)cr=parseMaybe(z['gsj_v11_lotes']??z.registros??z.registrosProducao??z.producoes,[]);
+ }
+ cl=(Array.isArray(cl)?cl:[]).map(normalizarLoteImportado).filter(Boolean);
+ cr=(Array.isArray(cr)?cr:[]).map(normalizarRegistroImportado).filter(Boolean);
+ return {cl,cr};
+}
+function lerDadosV11Local(){
+ const d={
+   gsj_v11_lotes_cadastro:localStorage.getItem('gsj_v11_lotes_cadastro'),
+   gsj_v11_lotes:localStorage.getItem('gsj_v11_lotes')
+ };
+ return lerDadosV11DoObjeto(d);
+}
+function aplicarImportacaoV11(cl,cr,origem='V11'){
+ if(!cl.length&&cr.length){
+   const ids=[...new Set(cr.map(r=>String(r.loteId)))];
+   cl=ids.map((id,i)=>normalizarLoteImportado({id:Number(id)||Date.now()+i,nome:'Lote '+id,aves:0},i));
+ }
+ if(!cl.length&&!cr.length)throw new Error('Nenhum lote ou registro diário de produção foi encontrado.');
+ if(!confirm(`Foram encontrados ${cl.length} lote(s) e ${cr.length} registro(s). Importar para o sistema de fichas?`))return false;
+ const map=new Map(lotes.map(x=>[String(x.id),x]));
+ cl.forEach(x=>map.set(String(x.id),{...map.get(String(x.id)),...x}));
+ lotes=[...map.values()];
+ const rmap=new Map(regs.map(x=>[`${x.loteId}|${x.data}`,x]));
+ cr.forEach(x=>{const k=`${x.loteId}|${x.data}`,ant=rmap.get(k)||{};rmap.set(k,{...ant,...x,fichaId:x.fichaId||ant.fichaId||uid('FICHA'),criadoEm:x.criadoEm||ant.criadoEm||agoraISO(),responsavel:x.responsavel||ant.responsavel||'Importado'});});
+ regs=[...rmap.values()];
+ set(KLOT,lotes);set(KREG,regs);
+ localStorage.setItem('gsj_fichas_ultima_importacao',new Date().toISOString());
+ registrarAuditoria('Importação realizada',`${cl.length} lote(s) e ${cr.length} registro(s) • ${origem}`,'IMPORT');
+ snapshotInterno();renderSelects();renderLotes();renderHist();
+ $('impStatus').innerHTML=`<span class="badge">Importado</span> ${cl.length} lote(s) e ${cr.length} registro(s) • ${esc(origem)}.`;
+ alert('Dados de lotes e produção copiados com sucesso.');
+ return true;
+}
+function importarDiretoV11(){
+ try{
+   const {cl,cr}=lerDadosV11Local();
+   if(!cl.length&&!cr.length){
+     $('impStatus').innerHTML='<b>Não encontrei dados locais da V11 neste endereço.</b><br>Abra a V11 neste mesmo aparelho e no mesmo endereço do GitHub Pages, depois volte aqui e tente novamente.';
+     return alert('Não encontrei os lotes da V11 neste navegador.');
+   }
+   aplicarImportacaoV11(cl,cr,'V11 deste aparelho');
+ }catch(e){alert('Não foi possível importar: '+e.message)}
+}
+function importarBackup(ev){
+ const f=ev.target.files[0];if(!f)return;const rd=new FileReader();
+ rd.onload=()=>{try{
+   const d=JSON.parse(rd.result);
+   let {cl,cr}=lerDadosV11DoObjeto(d);
+   if(!cl.length&&!cr.length){
+     // CORREÇÃO: backups antigos da V11 podem não carregar os lotes. Antes de falhar,
+     // procuramos os lotes que ainda estão salvos no próprio navegador/aparelho.
+     const local=lerDadosV11Local();
+     if(local.cl.length||local.cr.length){
+       const usar=confirm(`Este backup não contém os lotes, mas encontrei ${local.cl.length} lote(s) e ${local.cr.length} registro(s) salvos na V11 deste aparelho. Importar esses dados agora?`);
+       if(usar){aplicarImportacaoV11(local.cl,local.cr,'V11 deste aparelho (backup antigo sem lotes)');return;}
+     }
+     const ehV11=Number(d.versao)===11;
+     const prodVazia=Array.isArray(d.producoes)&&d.producoes.length===0;
+     const msg=ehV11
+       ? 'Backup da V11 reconhecido, mas este arquivo foi gerado sem os dados de lotes/produção'+(prodVazia?' (producoes está vazio).':'')+'. Use o botão “Ler dados direto da V11 deste aparelho” nesta tela.'
+       : 'O arquivo foi lido, mas não foram encontrados lotes ou registros de produção compatíveis.';
+     $('impStatus').innerHTML='<b>Arquivo reconhecido, sem dados de lotes.</b><br>'+esc(msg);
+     throw new Error(msg);
+   }
+   aplicarImportacaoV11(cl,cr,'arquivo de backup');
+ }catch(e){alert('Não foi possível importar: '+e.message)}finally{ev.target.value=''}};
+ rd.readAsText(f);
+}
+function exportarDados(){
+ const d={sistema:'Controle de Fichas GSJ',versao:2,gerado:new Date().toISOString(),lotes,registros:regs,auditoria};
+ const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='backup_fichas_granja_sao_jose.json';a.click();localStorage.setItem('gsj_fichas_ultimo_backup_exportado',agoraISO());registrarAuditoria('Backup exportado','Arquivo de backup gerado pelo sistema','BACKUP');setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
+function restaurarDados(ev){
+ const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!Array.isArray(d.lotes)||!Array.isArray(d.registros))throw new Error('Arquivo inválido');if(!confirm('Restaurar este backup e substituir os dados atuais das fichas?'))return;lotes=d.lotes;regs=d.registros;set(KLOT,lotes);set(KREG,regs);renderSelects();renderLotes();renderHist();alert('Backup restaurado.')}catch(e){alert('Erro: '+e.message)}};rd.readAsText(f)
+}
+(function init(){
+ $('data').value=hoje();$('mes').value=mesAtual();renderSelects();renderLotes();
+ const u=localStorage.getItem('gsj_fichas_ultima_importacao');
+ if(u)$('impStatus').textContent='Última importação: '+new Date(u).toLocaleString('pt-BR');
+ else{const d=lerDadosV11Local();if(d.cl.length||d.cr.length)$('impStatus').innerHTML=`<b>V11 detectada neste aparelho:</b> ${d.cl.length} lote(s) e ${d.cr.length} registro(s). Você pode importar direto, sem backup.`;}
+ atualizarSegStatus();renderAuditoria();
+})();
+</script>
+</body>
+</html>
